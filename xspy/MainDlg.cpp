@@ -27,32 +27,6 @@
 #endif
 #endif
 
-//// 计算tab高度 from wtl:CTabView
-//int CMainDlg::CalcTabHeight()
-//{
-//	int nCount = m_tab.GetItemCount();
-//	int nIndex = m_tab.InsertItem(nCount, _T("NS"));
-//
-//	RECT rect = { 0, 0, 1000, 1000 };
-//	m_tab.AdjustRect(FALSE, &rect);
-//
-//	RECT rcWnd = { 0, 0, 1000, rect.top };
-//	::AdjustWindowRectEx(&rcWnd, m_tab.GetStyle(), FALSE, m_tab.GetExStyle());
-//
-//	int nHeight = rcWnd.bottom - rcWnd.top;
-//
-//	m_tab.DeleteItem(nIndex);
-//
-//	return nHeight;
-//}
-
-//class CAboutDlg : public CDialogImpl<CAboutDlg>
-//{
-//public:
-//    enum { IDD = IDD_ABOUTBOX };
-//    BEGIN_MSG_MAP(CAboutDlg)
-//    END_MSG_MAP()
-//};
 
 LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 {
@@ -81,37 +55,12 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 
     CRect rc;
     CRect rcShow;
-
     GetWindowRect(rc);
     GetDlgItem(IDC_STATIC_MORE).GetWindowRect(rcShow);
     m_oldBottom = rc.bottom - rcShow.bottom;
     rc.bottom = rcShow.bottom;
     MoveWindow(rc);
-	//m_tab.Attach(GetDlgItem(IDC_TAB1));
-	//m_tab.InsertItem(0, _T("MFC"));
-	//m_tab.InsertItem(1, _T("ATL/WTL"));
-    //m_tab.InsertItem(2, _T("关于"));
 
-	//WTL::CRect rc;
-	//m_tab.GetClientRect(rc);
-	//rc.top += CalcTabHeight();
-	//rc.bottom -= 5;
-	//rc.left += 5;
-	//rc.right -= 5;
-
-	//ui_mfc_.Create(m_tab.m_hWnd);
-	//ui_atl_.Create(m_tab.m_hWnd);
- //   ui_about_.reset(new CAboutDlg());
- //   ui_about_->Create(m_tab.m_hWnd);
-
-	//ui_mfc_.MoveWindow(&rc);
-	//ui_atl_.MoveWindow(&rc);
- //   ui_about_->MoveWindow(&rc);
-
-    //ShowChange(0);
-
-    //ui_capture_.AddRecvWnd(ui_mfc_);
-    //ui_capture_.AddRecvWnd(ui_wtl_);
     ui_capture_.AddRecvWnd(m_hWnd); // 由主界面统一处理
 
     //EnablePrivilege();
@@ -157,16 +106,10 @@ LRESULT CMainDlg::OnOK(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /
 
 LRESULT CMainDlg::OnCancel(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
-	//EndDialog(wID);
     CloseDialog(wID);
 	return 0;
 }
 
-//LRESULT CMainDlg::OnTcnSelchangeTab1(int /*idCtrl*/, LPNMHDR pNMHDR, BOOL& /*bHandled*/)
-//{
-//	ShowChange(m_tab.GetCurSel());
-//	return 0;
-//}
 
 LRESULT CMainDlg::OnSpy( UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/ )
 {
@@ -229,36 +172,10 @@ LRESULT CMainDlg::OnSpy( UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& 
 #endif
         GetDlgItem(IDC_EDIT_MSG).SetWindowText(strResult.c_str());
 
-        //if (result->type == 0)
-        //{
-        //    SendMessage(ui_mfc_, WM_SPY, (WPARAM)strResult.c_str(), 0);
-        //    ShowChange(0);
-        //}
-        //else if(result->type == 1)
-        //{
-        //    SendMessage(ui_atl_, WM_SPY, (WPARAM)strResult.c_str(), 0);
-        //    ShowChange(1);
-        //}
     }
 
     return 0;
 }
-
-//void CMainDlg::ShowChange( int index )
-//{
-//    ui_mfc_.ShowWindow(SW_HIDE);
-//    ui_atl_.ShowWindow(SW_HIDE);
-//    ui_about_->ShowWindow(SW_HIDE);
-//
-//    if (0 == index)
-//        ui_mfc_.ShowWindow(SW_SHOW);
-//    else if(1 == index)
-//        ui_atl_.ShowWindow(SW_SHOW);
-//    else if(2 == index)
-//        ui_about_->ShowWindow(SW_SHOW);
-//    
-//    m_tab.SetCurSel(index);
-//}
 
 BOOL CMainDlg::PreTranslateMessage( MSG* pMsg )
 {
@@ -317,4 +234,3 @@ LRESULT CMainDlg::OnBnClickedButton1(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 
     return 0;
 }
-

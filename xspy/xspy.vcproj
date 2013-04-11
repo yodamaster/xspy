@@ -436,30 +436,6 @@
 			</File>
 		</Filter>
 		<Filter
-			Name="mfc"
-			>
-			<File
-				RelativePath=".\ui_mfc.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\ui_mfc.h"
-				>
-			</File>
-		</Filter>
-		<Filter
-			Name="wtl"
-			>
-			<File
-				RelativePath=".\ui_atl.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\ui_atl.h"
-				>
-			</File>
-		</Filter>
-		<Filter
 			Name="misc"
 			>
 			<File
