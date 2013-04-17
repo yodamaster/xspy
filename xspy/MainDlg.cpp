@@ -14,13 +14,13 @@
 #include <atlstr.h>
 #include "../xspydll/xspydll.h"
 #ifdef _DEBUG
-#ifdef _M_AMD64
+#ifdef _WIN64
 #pragma comment(lib, "..\\Debug\\xspydll-x64.lib")
 #else
 #pragma comment(lib, "..\\Debug\\xspydll.lib")
 #endif
 #else
-#ifdef _M_AMD64
+#ifdef _WIN64
 #pragma comment(lib, "..\\Release\\xspydll-x64.lib")
 #else
 #pragma comment(lib, "..\\Release\\xspydll.lib")
@@ -93,7 +93,7 @@ LRESULT CMainDlg::OnOK(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /
         else
             text.Insert(0, _T("0x"));
         HWND hWnd;
-#ifdef _M_AMD64 // 使用StrToInt64Ex，需要#define _WIN32_IE	0x0600
+#ifdef _WIN64 // 使用StrToInt64Ex，需要#define _WIN32_IE	0x0600
         StrToInt64Ex(text, STIF_SUPPORT_HEX, (LONGLONG *)&hWnd);
 #else
         StrToIntEx(text, STIF_SUPPORT_HEX, (int*)&hWnd);
@@ -153,9 +153,9 @@ LRESULT CMainDlg::OnSpy( UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& 
         {
 #ifdef _UNICODE
             std::string str1 = ws2s((LPCTSTR)str);
-            strncpy(arg.mfc_dll_name, str1.c_str(), sizeof(arg.mfc_dll_name) - 1);
+            strncpy_s(arg.mfc_dll_name, MAX_PATH, str1.c_str(), sizeof(arg.mfc_dll_name) - 1);
 #else
-            strncpy(arg.mfc_dll_name, str, sizeof(arg.mfc_dll_name) - 1);
+            strncpy_s(arg.mfc_dll_name, MAX_PATH, str, sizeof(arg.mfc_dll_name) - 1);
 #endif
         }
     }

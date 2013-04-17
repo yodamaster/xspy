@@ -436,6 +436,14 @@
 			>
 		</Filter>
 		<File
+			RelativePath=".\LDE64.lib"
+			>
+		</File>
+		<File
+			RelativePath=".\LDE64x64.lib"
+			>
+		</File>
+		<File
 			RelativePath=".\ReadMe.txt"
 			>
 		</File>

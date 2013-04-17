@@ -2,6 +2,9 @@
 Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xspy", "xspy\xspy.vcproj", "{75CC12C3-9305-4867-8BA1-97E3B3CB1E28}"
+	ProjectSection(ProjectDependencies) = postProject
+		{147813DE-3456-4F77-8503-59678E9E32CC} = {147813DE-3456-4F77-8503-59678E9E32CC}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xspydll", "xspydll\xspydll.vcproj", "{147813DE-3456-4F77-8503-59678E9E32CC}"
 EndProject
