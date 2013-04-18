@@ -85,88 +85,19 @@ void EnablePrivilege(void)
         NULL, NULL);
     CloseHandle(hToken);
 }
+#include <iterator>
+//#pragma warning(push)
+//#pragma warning(disable: 4244) // possible loss of data
 
-
-
-static int AstringToWstring(const std::string &aStringA, std::wstring &aStringW)
-{
-    const int BUFFER_SIZE = 512;
-    wchar_t basememory[BUFFER_SIZE] = {0};
-    wchar_t *widechar = basememory;
-
-    int chars = ::MultiByteToWideChar(CP_ACP, 0, aStringA.c_str(), -1, NULL, 0);
-    if (0 < chars)
-    {
-        if (chars >= BUFFER_SIZE)
-        {
-            wchar_t *widechar = new wchar_t[chars+1];
-            ZeroMemory(widechar, sizeof(wchar_t)*(chars+1));
-        }
-
-        if (NULL != widechar)
-        {
-            chars = ::MultiByteToWideChar(CP_ACP, 0, aStringA.c_str(), -1, widechar, chars);
-            if (0 < chars)
-            {
-                aStringW.assign(widechar);
-            }
-
-            if (chars >= BUFFER_SIZE)
-            {
-                delete[] widechar;
-                widechar = NULL;
-            }
-
-            return chars;
-        }
-    }
-
-    return 0;
+std::string ws2s(const std::wstring& s){
+    std::string temp;
+    std::copy(s.begin(), s.end(), std::back_inserter(temp));
+    return temp; 
 }
-
-static int WstringToAstring(const std::wstring &aStringW, std::string &aStringA)
-{
-    const int BUFFER_SIZE = 512;
-    char basememory[BUFFER_SIZE] = {0};
-    char *memory = basememory;
-
-    int bytes = ::WideCharToMultiByte(CP_ACP, 0, aStringW.c_str(), -1, NULL, 0, NULL, NULL);
-    if (0 < bytes)
-    {
-        if (bytes >= BUFFER_SIZE)
-        {
-            memory = new char[bytes+1];
-            ZeroMemory(memory, sizeof(char)*(bytes+1));
-        }
-
-        if (NULL != memory)
-        {
-            bytes = ::WideCharToMultiByte(CP_ACP, 0, aStringW.c_str(), -1, memory, bytes, NULL, NULL);
-            if (0 < bytes)
-            {
-                aStringA.assign(memory);
-            }
-
-            if (bytes >= BUFFER_SIZE)
-            {
-                delete[] memory;
-                memory = NULL;
-            }
-
-            return bytes;
-        }
-    }
-
-    return 0;
-}
-std::string ws2s(const std::wstring& inputws){
-    std::string ret;
-    WstringToAstring(inputws, ret);
-    return ret;
-}
+//#pragma warning(pop)
 
 std::wstring s2ws(const std::string& s){ 
-    std::wstring ret;
-    AstringToWstring(s, ret);
-    return ret;
+    std::wstring str2;
+    std::copy(s.begin(), s.end(), std::back_inserter(str2));
+    return str2;
 }
