@@ -164,11 +164,12 @@ LRESULT CMainDlg::OnSpy( UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& 
     if (result)
     {
         std::tstring strResult;
+        strResult = _T("温馨提示:鼠标双击选中地址后，鼠标右键立刻复制\r\n");
 
 #ifdef _UNICODE
-        strResult = s2ws(result->retMsg);
+        strResult += s2ws(result->retMsg);
 #else
-        strResult = result->retMsg;
+        strResult += result->retMsg;
 #endif
         GetDlgItem(IDC_EDIT_MSG).SetWindowText(strResult.c_str());
 
@@ -190,6 +191,35 @@ BOOL CMainDlg::PreTranslateMessage( MSG* pMsg )
                 OnOK(0, 0, 0, b);
                 return FALSE;
             }
+        }
+    }
+
+    // 实现edit类似windbg的功能        
+    if (pMsg->message == WM_RBUTTONDOWN)
+    {
+        TCHAR szClassName[MAX_PATH];
+        HWND hFocus = GetFocus();
+        GetClassName(hFocus, szClassName, MAX_PATH);
+        if (0 == lstrcmpi(szClassName, TEXT("Edit")))
+        {
+            DWORD dwP, dwL;
+            ::SendMessage(hFocus, EM_GETSEL, (WPARAM)&dwP, (LPARAM)&dwL);
+            // _cprintf("p:%d, l:%d", dwP, dwL);
+
+            DWORD dwSelected = dwL - dwP;
+            // 复制
+            if (dwSelected)
+            {
+                ::SendMessage(hFocus, WM_COPY, 0, 0);
+                // 复制后去掉选中状态，定位到首个复制点
+                ::SendMessage(hFocus, EM_SETSEL, (WPARAM)dwP, (LPARAM)dwP); 
+            }
+            // 粘贴
+            else
+            {
+                ::SendMessage(hFocus, WM_PASTE, 0, 0);
+            }
+            return TRUE; // 不再弹出右键菜单
         }
     }
 

@@ -327,6 +327,14 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\atl.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\common.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\dllmain.cpp"
 				>
 				<FileConfiguration
@@ -421,11 +429,19 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
+				RelativePath=".\atl.h"
+				>
+			</File>
+			<File
 				RelativePath=".\common.h"
 				>
 			</File>
 			<File
 				RelativePath=".\mfc.h"
+				>
+			</File>
+			<File
+				RelativePath=".\mfc_class.h"
 				>
 			</File>
 			<File

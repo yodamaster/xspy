@@ -7,10 +7,10 @@
 #include <malloc.h>
 #include <string>
 #include <boost/format.hpp>
-#include <atlstdthunk.h>
 #include "xspydll.h"
-#include "mfc.h"
 #include "common.h"
+#include "mfc.h"
+#include "atl.h"
 
 HMODULE g_hModule = NULL;
 #define NUM_WNDINFO 16*4*1024-16
@@ -20,7 +20,6 @@ HMODULE g_hModule = NULL;
 HHOOK g_hk = NULL;
 HWND g_hDstWnd = NULL;
 BOOL g_bOK = FALSE;
-UINT32 g_Type = 0; // mfc=0, atl=1
 char g_dllname[MAX_PATH] = {0};
 char g_hwndinfo[NUM_WNDINFO] = {0};
 #pragma data_seg()
@@ -28,111 +27,9 @@ char g_hwndinfo[NUM_WNDINFO] = {0};
 
 #define MKTRUE(x) ((x),true)
 
-
-static BOOL TryCopyMemory(LPVOID dest, LPCVOID src, size_t size)
-{
-    if (!IsBadReadPtr(src, size))
-    {
-        memcpy(dest, src, size);
-        return TRUE;
-    }
-    return FALSE;
-}
-
-
-static BOOL TryReadThunkData(LONG_PTR dlgProc, std::string & sresult, bool bDlg = true)
-{
-    BOOL bHasResult = FALSE; 
-    if (dlgProc)
-    {
-        sresult += bDlg ? "DWLP_DLGPROC" : "GWLP_WNDPROC";
-        sresult += boost::str(boost::format(" address: "
-            POINTER_FORMAT_STR//"0x%08x"
-            "\r\n") % dlgProc);
-
-        ATL::_stdcallthunk thunk;
-        if (TryCopyMemory(&thunk, (LPCVOID)dlgProc, sizeof(ATL::_stdcallthunk)))
-        {
-            struct thunk_data
-            {
-                LPVOID thunk_this;
-                LPVOID thunk_proc;
-                thunk_data() : thunk_this(0), thunk_proc(0){}
-            };
-            thunk_data td;
-
-            // d:\Program Files\Microsoft Visual Studio 9.0\VC\atlmfc\include\atlstdthunk.h中的_stdcallthunk
-#ifdef _WIN64
-            if (0xb948 == thunk.RcxMov && 0xb848 == thunk.RaxMov && 0xe0ff == thunk.RaxJmp)
-            {
-                td.thunk_this = (LPVOID)thunk.RcxImm;
-                td.thunk_proc = (LPVOID)thunk.RaxImm;
-            }
-#else
-            if (thunk.m_mov == 0x042444C7 && thunk.m_jmp == 0xe9)
-            {
-                // 计算绝对地址，代码参考atlstdthunk.h
-                td.thunk_proc = LPVOID(((INT_PTR)dlgProc+sizeof(ATL::_stdcallthunk)) + (INT_PTR)thunk.m_relproc);
-                td.thunk_this = (LPVOID)thunk.m_this;
-            }
-#endif
-
-            if (td.thunk_this && td.thunk_proc)
-            {
-                g_Type = 1;
-                bHasResult = TRUE;
-                
-                sresult += bDlg ? "Dialog" : "Windows";
-                sresult += boost::str(boost::format
-                    (" thunk address = "
-                    POINTER_FORMAT_STR//0x%08x
-                    "\r\n"
-                    "class intstance = 0x%08x\r\n")
-                    % dlgProc 
-                    % td.thunk_this);
-                sresult += bDlg ? "DialogProc" : "WindowProc";
-                sresult += boost::str(boost::format("= "
-                    POINTER_FORMAT_STR//0x%08x
-                    "\r\n") % td.thunk_proc);
-
-                LPVOID lpVtable, lpMsgap;
-
-                if (TryCopyMemory(&lpVtable, td.thunk_this, sizeof(lpVtable)))
-                {
-                    sresult += boost::str(boost::format("[00]vftable address = "
-                        POINTER_FORMAT_STR//0x%08x
-                        "\r\n") % lpVtable);
-                    if (TryCopyMemory(&lpMsgap, lpVtable, sizeof(lpMsgap)))
-                    {
-                        sresult += boost::str(boost::format("[vtbl+00]ProcessWindowMessage = "
-                            POINTER_FORMAT_STR//0x%08x
-                            "\r\n") % lpMsgap);
-                    }
-                }
-
-                //sresult += boost::str(boost::format
-                //    ("Dialog thunk address: 0x%08x\r\n"
-                //    "\tclass intstance: 0x%08x\r\n"
-                //    "\tDialogProc: 0x%08x\r\n"
-                //    "\tvftable address: 0x%08x\r\n"
-                //    "\tmsg map address: 0x%08x\r\n")
-                //    % dlgProc 
-                //    % td.thunk_this
-                //    % td.thunk_proc
-                //    % lpVtable
-                //    % lpMsgap);
-            }
-        }
-
-    }
-    return bHasResult;
-}
-
-
-
 static BOOL DoSpyIt(HWND hWnd, std::string & sresult)
 {
-    BOOL bHasResult = FALSE;
+    BOOL bHasResult = TRUE; // 没信息也显示一些已经获取到的信息
 
     DWORD pid, tid;
     tid = GetWindowThreadProcessId(hWnd, &pid);
@@ -141,48 +38,9 @@ static BOOL DoSpyIt(HWND hWnd, std::string & sresult)
     sresult += boost::str(boost::format("hook thread tid: 0x%08x\r\n") % tid);
     bHasResult = TRUE;
 
-    sresult += "----------获取ATL/WTL相关信息-------------\r\n";
-    LONG_PTR winProc = ::GetWindowLongPtr(hWnd, DWLP_DLGPROC);
-    if(TryReadThunkData(winProc, sresult))
-    {
-        bHasResult = TRUE;
-    }
+    SpyATL(hWnd, sresult);
 
-    // 注意该调用总能获取到地址，要读取内存来判断
-    winProc = ::GetWindowLongPtr(hWnd, GWLP_WNDPROC);
-    if(TryReadThunkData(winProc, sresult, false))
-    {
-        bHasResult = TRUE;
-    }
-
-    sresult += "----------获取MFC相关信息-------------\r\n";
     SpyMfc(hWnd, sresult);
-    //std::map<CWnd*,DWORD> wnds;
-    //GetWnds(hWnd,wnds);
-    //if(wnds.size() == 0)
-    //{
-    //    BOOL bIsMfc = ::SendMessage(hWnd,WM_QUERYAFXWNDPROC,0,0);
-    //    sresult.Format("map %sHWND %p To CWnd* failed!",bIsMfc?"mfc ":"",hWnd);
-    //    if(bIsMfc)
-    //    {
-    //        CString temp;
-    //        temp.Format("\r\nworking pid=%p,tid=%p fun=%p",
-    //            (PVOID)GetCurrentProcessId(),(PVOID)GetCurrentThreadId(),
-    //            GetFinalAddr(CWnd::FromHandlePermanent));
-    //        sresult += temp;
-    //    }
-    //    return FALSE;
-    //}
-    //else
-    //{
-    //    std::map<CWnd*,DWORD>::iterator p;
-    //    for(p = wnds.begin(); p!=wnds.end(); ++p)
-    //    {
-    //        SpyHelper * sh = (SpyHelper*) p->first;
-    //        sh->Flag() = p->second;
-    //        sh->SpyDlg(sresult,hWnd);
-    //    }
-    //}
 
     return bHasResult;
 }
@@ -295,7 +153,6 @@ result_struct* xspydll_Spy(const arg_struct* arg)
     {
         result_struct* d = new result_struct;
         d->retMsg = result;
-        d->type = g_Type;
         return d;
     }
 
