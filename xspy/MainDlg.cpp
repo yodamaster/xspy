@@ -26,7 +26,7 @@
 #pragma comment(lib, "..\\Release\\xspydll.lib")
 #endif
 #endif
-
+ 
 
 LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 {

@@ -85,19 +85,45 @@ void EnablePrivilege(void)
         NULL, NULL);
     CloseHandle(hToken);
 }
-#include <iterator>
-//#pragma warning(push)
-//#pragma warning(disable: 4244) // possible loss of data
 
-std::string ws2s(const std::wstring& s){
-    std::string temp;
-    std::copy(s.begin(), s.end(), std::back_inserter(temp));
-    return temp; 
+#include <vector>
+static std::wstring string2wstring(const std::string & rString, UINT codepage)
+{
+    int len = MultiByteToWideChar(codepage, 0, rString.c_str(), -1, NULL, 0);
+    if(len > 0)
+    {		
+        std::vector<wchar_t> vw(len);
+        MultiByteToWideChar(codepage, 0, rString.c_str(), -1, &vw[0], len);
+        return &vw[0];
+    }
+    else
+        return L"";
 }
-//#pragma warning(pop)
+
+static std::string wstring2string(const std::wstring & rwString, UINT codepage)
+{
+    int len = WideCharToMultiByte(codepage, 0, rwString.c_str(), -1, NULL, 0, NULL, NULL);
+    if(len > 0)
+    {		
+        std::vector<char> vw(len);
+        WideCharToMultiByte(codepage, 0, rwString.c_str(), -1, &vw[0], len, NULL, NULL);
+        return &vw[0];
+    }
+    else
+        return "";
+}
+
+//#include <iterator>
+std::string ws2s(const std::wstring& s){
+    return wstring2string(s, CP_ACP);
+    //std::string temp;
+    //std::copy(s.begin(), s.end(), std::back_inserter(temp));
+    //return temp; 
+}
 
 std::wstring s2ws(const std::string& s){ 
-    std::wstring str2;
-    std::copy(s.begin(), s.end(), std::back_inserter(str2));
-    return str2;
+    return string2wstring(s, CP_ACP);
+    //std::wstring str2;
+    //std::copy(s.begin(), s.end(), std::back_inserter(str2));
+    //return str2;
 }

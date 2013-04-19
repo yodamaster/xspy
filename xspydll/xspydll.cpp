@@ -87,10 +87,10 @@ static BOOL TryReadThunkData(LONG_PTR dlgProc, std::string & sresult, bool bDlg 
                     (" thunk address = "
                     POINTER_FORMAT_STR//0x%08x
                     "\r\n"
-                    "\tclass intstance = 0x%08x\r\n")
+                    "class intstance = 0x%08x\r\n")
                     % dlgProc 
                     % td.thunk_this);
-                sresult += bDlg ? "\tDialogProc" : "\tWindowProc";
+                sresult += bDlg ? "DialogProc" : "WindowProc";
                 sresult += boost::str(boost::format("= "
                     POINTER_FORMAT_STR//0x%08x
                     "\r\n") % td.thunk_proc);
@@ -99,12 +99,12 @@ static BOOL TryReadThunkData(LONG_PTR dlgProc, std::string & sresult, bool bDlg 
 
                 if (TryCopyMemory(&lpVtable, td.thunk_this, sizeof(lpVtable)))
                 {
-                    sresult += boost::str(boost::format("\tvftable address = "
+                    sresult += boost::str(boost::format("[00]vftable address = "
                         POINTER_FORMAT_STR//0x%08x
                         "\r\n") % lpVtable);
                     if (TryCopyMemory(&lpMsgap, lpVtable, sizeof(lpMsgap)))
                     {
-                        sresult += boost::str(boost::format("\tmsg map address = "
+                        sresult += boost::str(boost::format("[vtbl+00]ProcessWindowMessage = "
                             POINTER_FORMAT_STR//0x%08x
                             "\r\n") % lpMsgap);
                     }
@@ -141,6 +141,7 @@ static BOOL DoSpyIt(HWND hWnd, std::string & sresult)
     sresult += boost::str(boost::format("hook thread tid: 0x%08x\r\n") % tid);
     bHasResult = TRUE;
 
+    sresult += "----------获取ATL/WTL相关信息-------------\r\n";
     LONG_PTR winProc = ::GetWindowLongPtr(hWnd, DWLP_DLGPROC);
     if(TryReadThunkData(winProc, sresult))
     {
@@ -154,6 +155,7 @@ static BOOL DoSpyIt(HWND hWnd, std::string & sresult)
         bHasResult = TRUE;
     }
 
+    sresult += "----------获取MFC相关信息-------------\r\n";
     SpyMfc(hWnd, sresult);
     //std::map<CWnd*,DWORD> wnds;
     //GetWnds(hWnd,wnds);
