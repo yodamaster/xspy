@@ -45,8 +45,15 @@ void ui_capture_t<T, TBase, TWinTraits>::Init()
 template <class T, class TBase, class TWinTraits>
 LRESULT ui_capture_t<T, TBase, TWinTraits>::OnLButtonDown(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 {
+    std::set<HWND>::const_iterator si = m_recvWnd.begin();
+    for (; si != m_recvWnd.end(); ++si)
+    {
+        ::PostMessage(*si, WM_SPY_START, 0, NULL);
+    }
     if (!m_bTracking)
     {
+
+
         m_bTracking = true;
         SetCapture();
         SetIcon(NULL);

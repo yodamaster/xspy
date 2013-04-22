@@ -408,6 +408,13 @@ public:
     }
 };
 
+template<class T, bool IsDialog>
+class CWndOrDialog90 : public CWnd90<T>{};
+
+template<class T>
+class CWndOrDialog90<T, true>: public CDialog90<T>{};
+
+
 template <class dbg>
 class CDialogX : public CWndX<dbg>
 {

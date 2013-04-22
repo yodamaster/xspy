@@ -113,6 +113,8 @@ LRESULT CMainDlg::OnCancel(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOO
 
 LRESULT CMainDlg::OnSpy( UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/ )
 {
+    ShowWindow(SW_SHOW);
+
     HWND hWnd = (HWND)wParam;
     if(hWnd==NULL || !::IsWindow(hWnd)){MessageBeep(0);return 0;}
 
@@ -262,5 +264,11 @@ LRESULT CMainDlg::OnBnClickedButton1(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
     MoveWindow(rc);
     GetDlgItem(IDC_BUTTON1).ShowWindow(SW_HIDE);
 
+    return 0;
+}
+
+LRESULT CMainDlg::OnSpyStart( UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/ )
+{
+    ShowWindow(SW_HIDE);
     return 0;
 }

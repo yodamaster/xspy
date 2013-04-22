@@ -30,6 +30,7 @@ public:
 		COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
 		//NOTIFY_HANDLER(IDC_TAB1, TCN_SELCHANGE, OnTcnSelchangeTab1)
         MESSAGE_HANDLER(WM_SPY, OnSpy)
+        MESSAGE_HANDLER(WM_SPY_START, OnSpyStart)
         MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
         COMMAND_HANDLER(IDC_CHECK1, BN_CLICKED, OnBnClickedCheck1)
         COMMAND_HANDLER(IDC_BUTTON1, BN_CLICKED, OnBnClickedButton1)
@@ -45,7 +46,8 @@ public:
 	LRESULT OnCancel(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
     LRESULT OnSpy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
-	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+    LRESULT OnSpyStart(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+    LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	//LRESULT OnTcnSelchangeTab1(int /*idCtrl*/, LPNMHDR pNMHDR, BOOL& /*bHandled*/);
     void CloseDialog(int nVal);
 	//int CalcTabHeight();

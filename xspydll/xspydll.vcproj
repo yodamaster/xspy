@@ -445,6 +445,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\mfc_msg.h"
+				>
+			</File>
+			<File
 				RelativePath=".\stdafx.h"
 				>
 			</File>
