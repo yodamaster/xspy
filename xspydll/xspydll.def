@@ -1,4 +1,3 @@
-LIBRARY	"xspydll"
 EXPORTS
 xspydll_Spy
 xspydll_SpyFree

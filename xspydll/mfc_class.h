@@ -36,6 +36,7 @@
 { \
     return #x; \
 }
+typedef size_t* PVFN;
 
 #define PRINT_VFN(x) \
     result += boost::str(boost::format("[vtbl+0x%02X]%-24s= %s\r\n") % index % #x % GetCodes((LPVOID)*pStart)); \
@@ -85,7 +86,7 @@ public:
     MAKE_VFN(dtor);
     MAKE_VFN(Serialize);
 
-    void get_vfn_string(PDWORD& pStart, DWORD& index, std::string& result)
+    void get_vfn_string(PVFN& pStart, DWORD& index, std::string& result)
     {
         index = 0;
         PRINT_VFN(GetRuntimeClass);
@@ -103,7 +104,7 @@ public:
     MAKE_VFN(AssertValid);
     MAKE_VFN(Dump);
 
-    void get_vfn_string(PDWORD& pStart, DWORD& index, std::string& result)
+    void get_vfn_string(PVFN& pStart, DWORD& index, std::string& result)
     {
         index = 0;
         PRINT_VFN(GetRuntimeClass);
@@ -131,7 +132,7 @@ public:
     //#define MAKE_MEMBER(x,fmt) sTemp.Format( "[+%02X]" #x "=" fmt "\r\n",(PBYTE)&(x) - (PBYTE)this,x);str += sTemp;
     //    sTemp.Format( "[+%02X]vtbl address=%s\r\n",0,(LPCSTR)GetMods(vtbl));str += sTemp;
 
-    void get_member(PDWORD& pStart, DWORD& index, std::string& result)
+    void get_member(PVFN& pStart, DWORD& index, std::string& result)
     {
         PDWORD pBegin = (PDWORD)pStart;
 
@@ -150,7 +151,7 @@ public:
         //		MAKE_MEMBER(CCmdTarget::m_xConnPtContainer.m_nOffset,"%p");
     }
 
-    void get_vfn_string(PDWORD& pStart, DWORD& index, std::string& result)
+    void get_vfn_string(PVFN& pStart, DWORD& index, std::string& result)
     {
         T::get_vfn_string(pStart, index, result);
         PRINT_VFN(OnCmdMsg);
@@ -179,7 +180,7 @@ template<class dbg>
 class CWnd42X : public CCmdTarget<dbg>
 {
 public:
-    void get_vfn_string(PDWORD& pStart, DWORD& index, std::string& result)
+    void get_vfn_string(PVFN& pStart, DWORD& index, std::string& result)
     {
         CCmdTarget<dbg>::get_vfn_string(pStart, index, result);
         PRINT_VFN(PreSubclassWindow);
@@ -215,7 +216,7 @@ template <class dbg>
 class CDialog42X : public CWnd42X<dbg>
 {
 public:
-    void get_vfn_string(PDWORD& pStart, DWORD& index, std::string& result)
+    void get_vfn_string(PVFN& pStart, DWORD& index, std::string& result)
     {
         CWnd42X<dbg>::get_vfn_string(pStart, index, result);
         PRINT_VFN(DoModal);
@@ -231,7 +232,7 @@ template <class dbg>
 class CWnd90X : public CCmdTarget<dbg>
 {
 public:
-    void get_vfn_string(PDWORD& pStart, DWORD& index, std::string& result)
+    void get_vfn_string(PVFN& pStart, DWORD& index, std::string& result)
     {
         CCmdTarget<dbg>::get_vfn_string(pStart, index, result);
         PRINT_VFN(PreSubclassWindow);
@@ -300,7 +301,7 @@ template<class dbg>
 class CDialog90X : public CWnd90X<dbg>
 {
 public:
-    void get_vfn_string(PDWORD& pStart, DWORD& index, std::string& result)
+    void get_vfn_string(PVFN& pStart, DWORD& index, std::string& result)
     {
         CWnd90X<dbg>::get_vfn_string(pStart, index, result);
         PRINT_VFN(Create);

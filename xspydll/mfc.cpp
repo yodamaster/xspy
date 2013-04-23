@@ -89,7 +89,14 @@ const unsigned char magic_code2[] = {
     0x8B, 0x7D, 0x0C, 0x81, 0xFF, 0x60, 0x03, 0x00, 0x00
 };
 #else
-
+// release cmp     edx, 360h
+const unsigned char magic_code[] = {
+    0x81, 0xFA, 0x60, 0x03, 0x00, 0x00
+};
+// debug cmp     [rsp+48h+nMsg], 360h
+const unsigned char magic_code2[] = {
+    0x81, 0x7C, 0x24, 0x58, 0x60, 0x03, 0x00, 0x00
+};
 #endif
 
 //// 加在这没用，要在sources里添加
@@ -100,7 +107,7 @@ const unsigned char magic_code2[] = {
 #endif
 // size_t在64位上就变成64位了!
 
-extern "C" size_t __stdcall LDE(IN PVOID  Address, IN ULONG  x64);
+extern "C" size_t __stdcall LDE(PVOID  Address, ULONG  x64);
 
 #include <boost/shared_array.hpp>
 LPVOID find_FromHandlePermanent(LPVOID start_addr, size_t start_len)
@@ -134,7 +141,10 @@ LPVOID find_FromHandlePermanent(LPVOID start_addr, size_t start_len)
     {
         if (*pStart == 0xE8) // call
         {
-            INT_PTR reloc= *(INT_PTR*)(pStart + 1);
+            //INT_PTR reloc= *(INT_PTR*)(pStart + 1);
+            //return (LPVOID)((INT_PTR)pStart + 5 + reloc);
+            // 64位下也是32位偏移
+            int reloc = *(int*)(pStart + 1);
             return (LPVOID)((INT_PTR)pStart + 5 + reloc);
         }
 #ifndef _WIN64
@@ -511,7 +521,7 @@ void SpyMfc(HWND hWnd, std::string& result)
 
     // 获取虚函数列表
     DWORD dwIndex;
-    PDWORD pVtbl = *((PDWORD*)p);
+    PVFN pVtbl = *((PVFN*)p);
 
 
 #define CASE_MFC(version, debug) \
