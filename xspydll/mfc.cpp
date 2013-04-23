@@ -222,53 +222,71 @@ static PVOID getfn(const AFX_MSGMAP_ENTRY * pentry)
     return *(PVOID**) &(pentry->pfn);
 }
 
-#include <boost/xpressive/xpressive.hpp>
-bool parse_AfxFrameOrView(char* str)
+#pragma warning(push)
+#pragma warning(disable:4996)
+#include <boost/xpressive/xpressive.hpp> // 加了这个可增大文件体积不少啊！
+bool parse_AfxFrameOrView(const char* str)
 {
     using namespace boost::xpressive;
-    cregex re = cregex::compile("^AfxFrameOrView(\\d+)s(u*d*)$");
+    // 标准正则表达式^AfxFrameOrView\d+su?d?$
+    cregex re = cregex::compile("^AfxFrameOrView(?P<version>\\d+)su?(?P<debug>d?)$");
     cmatch what;
     if( regex_match(str, what, re))
     {
         char* pEnd;
-        std::string s = what[1];
+        std::string s = what["version"];
         g_mfcver = strtoul(s.c_str(), &pEnd, 10);
-        s = what[2];
-        g_Isdbg = false;
-        if (s == "ud" || s == "d")
-        {
-            g_Isdbg = true;
-        }
+        s = what["debug"];
+        g_Isdbg = (s == "d");
         return true;
     }
     return false;
 }
 
-bool parse_AfxFrameOrView_u(wchar_t* str)
+bool parse_AfxFrameOrView_u(const wchar_t* str)
 {
     using namespace boost::xpressive;
-    wcregex re = wcregex::compile(L"^AfxFrameOrView(\\d+)s(u*d*)$");
+    wcregex re = wcregex::compile(L"^AfxFrameOrView(?P<version>\\d+)su?(?P<debug>d?)$");
     wcmatch what;
     if( regex_match(str, what, re ) )
     {
         wchar_t* pEnd;
-        std::wstring s = what[1];
+        std::wstring s = what[L"version"];
         g_mfcver = wcstoul(s.c_str(), &pEnd, 10);
-        s = what[2]; // "ud"一起返回的
-        g_Isdbg = false;
-        if (s == L"ud" || s == L"d")
-        {
-            g_Isdbg = true;
-        }
+        s = what[L"debug"];
+        g_Isdbg = (s == L"d");
         return true;
     }
     return false;
 }
 
+bool parse_mfcdll(const char* str)
+{
+    using namespace boost::xpressive;
+    // 标准正则表达式^mfc\d+u?d?\.dll$
+    cregex re = cregex::compile("^mfc(?P<version>\\d+)u?(?P<debug>d?)\\.dll$", regex_constants::icase);
+    cmatch what;
+    if( regex_match(str, what, re))
+    {
+        char* pEnd;
+        std::string s = what["version"];
+        unsigned long ver = strtoul(s.c_str(), &pEnd, 10);
+        if (ver > 40 && ver < 200)
+        {
+            g_mfcver = ver;
+            s = what["debug"];
+            g_Isdbg = (s == "d");
+            return true;
+        }
+    }
+    return false;
+}
 
+#pragma warning(pop)
 // 返回表示有结果，不用再继续搜索
 bool check_static(LPVOID start_addr, size_t start_len)
 {
+
     // 特征"AfxFrameOrView%_MFC_FILENAME_VER%[s][u][d]"，搜索依然用kmp算法
     char aStr[] = "AfxFrameOrView";
     wchar_t uStr[] = L"AfxFrameOrView";
@@ -353,31 +371,11 @@ void SpyMfc(HWND hWnd, std::string& result)
     while(pImportDesc->FirstThunk)  
     {  
         const char *pszDllName = (const char *)((BYTE *)hMod + pImportDesc->Name);
-        if (0 == _strnicmp(pszDllName, "mfc", 3))
+        if (parse_mfcdll(pszDllName))
         {
-            const char* pNum = pszDllName + 3;
-            char* pEnd = 0;
-            g_mfcver = strtoul(pNum, &pEnd, 10);
-            if (g_mfcver >= 40 && g_mfcver < 200) // 现在最大是100吧
-            {
-                g_Isdbg = false;
-
-                // 还要注意uinicode版本如mfc90u.dll
-                if ((0 == _strnicmp(pEnd, "ud", 2) )
-                    || (0 == _strnicmp(pEnd, "d", 1)))
-                {
-                    g_Isdbg = true;
-                    pEnd += 1;
-                }
-                if (0 == _strnicmp(pEnd, ".dll", 4)
-                    || 0 == _strnicmp(pEnd, "u.dll", 5)) // 还有mfc90chs.dll样式的
-                {
-                    //result += pszDllName;
-                    g_IsStatic = false;
-                    hModSearch = GetModuleHandleA(pszDllName);
-                    break;
-                }
-            }
+            g_IsStatic = false;
+            hModSearch = GetModuleHandleA(pszDllName);
+            break;
         }
         pImportDesc++;  
     }
@@ -398,196 +396,252 @@ void SpyMfc(HWND hWnd, std::string& result)
         }
     }
 
+    if (!hModSearch)
+    {
+        return;
+    }
+
     // 打印mfc基本信息
-    result += boost::str(boost::format("mfc version:%d, is static: %s, is debug: %s\r\n") % g_mfcver
+    result += boost::str(boost::format("mfc version:%d, static linked?: %s, debug?: %s\r\n") % g_mfcver
         % (g_IsStatic ? "true" : "false") 
         % (g_Isdbg ? "true" : "false") );
 
     std::vector<SECTION_T> search_area = GetCodeSection(hModSearch);
 
     std::vector<SECTION_T>::const_iterator vi = search_area.begin();
+    LPVOID p = 0;
     for (; vi != search_area.end(); ++vi)
     {
-        LPVOID p = find_FromHandlePermanent((*vi).VirtualAddr, (*vi).VirtualSize);
+        p = find_FromHandlePermanent((*vi).VirtualAddr, (*vi).VirtualSize);
         if (p)
         {
-            result += boost::str(boost::format("CWnd::FromHandlePermanent = 0x%p\r\n") % p);
-
-            typedef PVOID  (__stdcall *FROMHANDLEPERMANENT)(HWND hWnd);
-            FROMHANDLEPERMANENT FromHandlePermanent = (FROMHANDLEPERMANENT)p;
-            p = FromHandlePermanent(hWnd);
-            if (p)
-            {
-                result += boost::str(boost::format("CWnd = 0x%p\r\n") % p);
-
-                const AFX_MSGMAP* msgmap = NULL;
-                CRuntimeClass* pr = NULL;
-                int m_nObjectSize = 0;
-                if (IsStaticRelease()) // 只有静态链接并且是release才是CWnd
-                {
-                    CWnd* pCWnd = (CWnd*)p;
-                    pr = pCWnd->GetRuntimeClass();
-                    msgmap = pCWnd->GetMessageMap();
-                }
-                else
-                {
-                    CWndd* pCWnd = (CWndd*)p;
-                    pr = pCWnd->GetRuntimeClass();
-                    msgmap = pCWnd->GetMessageMap();
-                }
-
-                result += boost::str(boost::format("HWND: 0x%p\r\nclass:%p(%s,size=%#x)\r\n") % hWnd % p % pr->m_lpszClassName % pr->m_nObjectSize);
-                BOOL bIsDialog = FALSE;
-                while(pr)
-                {
-                    if(bIsDialog == FALSE && strcmp(pr->m_lpszClassName,"CDialog") == 0)
-                    {
-                        bIsDialog = TRUE;
-                        //if(pr->m_nObjectSize != sizeof(CDialog))
-                        //{
-                        //    CString aa;
-                        //    aa.Format("Warning: sizeof(CDialog) is %X,expect %x,\r\n"
-                        //        "dumping of member is *incorrect*!dumping of vtbl may be *incorrect*!\r\n",
-                        //        pr->m_nObjectSize,sizeof(CDialog));
-                        //    str += aa;
-                        //}
-                    }
-                    //if(strcmp(pr->m_lpszClassName,"CWnd") == 0 && pr->m_nObjectSize != sizeof(CWnd))
-                    //{
-                    //    CString aa;
-                    //    aa.Format("Warning: sizeof(CWnd) is %X,expect %x,\r\n"
-                    //        "dumping of member is *incorrect*!dumping of vtbl may be *incorrect*!\r\n",
-                    //        pr->m_nObjectSize,sizeof(CWnd));
-                    //    str += aa;
-                    //}
-                    result += pr->m_lpszClassName;
-                    pr = GetParentRTC(pr);
-                    if(pr)
-                        result += ":";
-                }
-
-                result += "\r\n\r\n";
-
-                // 获取虚函数列表
-                DWORD dwIndex;
-                PDWORD pVtbl = *((PDWORD*)p);
-
-                if (IsStaticRelease())
-                {
-                    if (g_mfcver == 90)
-                    {
-                        //CWndOrDialog90<CObject, bIsDialog>* wnd = (CWndOrDialog90<CObject, bIsDialog>*)p;
-                        //wnd->get_vfn_string(pVtbl, dwIndex, result);
-                        if (bIsDialog)
-                        {
-                            CDialog90<CObject>* pD = (CDialog90<CObject>*)p;
-                            pD->get_vfn_string(pVtbl, dwIndex, result);
-                        }
-                        else
-                        {
-                            CWnd90<CObject>* pCWnd = (CWnd90<CObject>*)p;
-                            pCWnd->get_vfn_string(pVtbl, dwIndex, result);
-                        }
-                    }
-                    else
-                    {
-                        if (bIsDialog)
-                        {
-                            CDialog* pD = (CDialog*)p;
-                            pD->get_vfn_string(pVtbl, dwIndex, result);
-                        }
-                        else
-                        {
-                            CWnd* pCWnd = (CWnd*)p;
-                            pCWnd->get_vfn_string(pVtbl, dwIndex, result);
-                        }
-                    }
-                }
-                else
-                {
-                    if(bIsDialog)
-                    {
-                        CDialogd* pCWnd = (CDialogd*)p;
-                        pCWnd->get_vfn_string(pVtbl, dwIndex, result);
-                    }
-                    else
-                    {
-                        CWndd* pCWnd = (CWndd*)p;
-                        pCWnd->get_vfn_string(pVtbl, dwIndex, result);
-                    }
-                }
-
-                if (!msgmap)
-                {
-                    result += "failed to get message map!\r\n";
-                }
-                else
-                {
-                    // 打印message map
-                    result += boost::str(boost::format("\r\nmessage map=%s\r\nmsg map entries at %s\r\n")
-                        % GetMods(msgmap) % GetMods(msgmap->lpEntries));
-                    if(msgmap->lpEntries)
-                    {
-                        static UINT_PTR AfxSig_end = 0;
-                        std::string s1, sTemp;
-                        std::string s2;
-                        const AFX_MSGMAP_ENTRY * pentries = msgmap->lpEntries;
-
-                        while(pentries->nSig != AfxSig_end)
-                        {
-                            if(pentries->nID == pentries->nLastID || pentries->nLastID == 0)
-                                s1 = boost::str(boost::format("%04x") % pentries->nID);
-                            else
-                                s1 = boost::str(boost::format("%04x to %04x") % pentries->nID % pentries->nLastID);
-                            s2 = boost::str(boost::format("%04X") % pentries->nMessage);
-                            for(int i=0;i<sizeof(wmmsgs)/sizeof(wmmsgs[0]); ++i)
-                            {
-                                if(wmmsgs[i].msg == pentries->nMessage)
-                                {
-                                    s2 = boost::str(boost::format("%s(%04x)") % wmmsgs[i].smsg % wmmsgs[i].msg);
-                                }
-                            }
-
-                            if(pentries->nMessage == -1 || (pentries->nMessage == WM_COMMAND && pentries->nCode==-1))
-                                sTemp = boost::str(boost::format("UpdateCmdUI: id=%s,func= %s\r\n") % s1
-                                % GetCodes( getfn(pentries) ) );
-                            else if(pentries->nMessage == WM_COMMAND)
-                                sTemp = boost::str(boost::format("OnCommand: notifycode=%04x id=%s,func= %s\r\n")
-                                % pentries->nCode % s1 % GetCodes(getfn(pentries)) );
-                            else if(pentries->nMessage == WM_NOTIFY)
-                                sTemp = boost::str(boost::format("OnNotify: notifycode=%04x id=%s,func= %s\r\n")
-                                % pentries->nCode % s1 % GetCodes(getfn(pentries)) );
-                            else if(pentries->nMessage == 0xC000)
-                            {
-                                char name[512];
-                                UINT * pMessage = (UINT*)pentries->nSig; 
-                                name[0] = 0;
-                                GetClipboardFormatNameA(*pMessage,name,sizeof(name));
-                                //GlobalGetAtomName(*pMessage,name,sizeof(name));
-                                sTemp = boost::str(boost::format("ReggedMsg:*(0x%p)=%04x(%s),func= %s\r\n") % pMessage % *pMessage % name
-                                    % GetCodes(getfn(pentries)));
-                            }
-                            else if(pentries->nCode==0 && pentries->nLastID==0 && pentries->nID==0)
-                                sTemp = boost::str(boost::format("OnMsg:%s,func= %s\r\n") % s2 % GetCodes(getfn(pentries)));
-                            else
-                                sTemp = boost::str(boost::format("msg:%s notifycode=%04x,id=%s,func= %s\r\n") % s2 % pentries->nCode
-                                %s1 % GetCodes(getfn(pentries)) );
-                            result += sTemp;
-                            ++ pentries;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                result += "failed to get CWnd instance\r\n";
-            }
-
-            break; // not continue?
+            break;
         }
-        else
+ 
+    }
+    if (0 == p)
+    {
+        result += "failed to find CWnd::FromHandlePermanent!\r\n";
+        return;
+    }
+    result += boost::str(boost::format("CWnd::FromHandlePermanent = 0x%p\r\n") % p);
+
+    typedef PVOID  (__stdcall *FROMHANDLEPERMANENT)(HWND hWnd);
+    FROMHANDLEPERMANENT FromHandlePermanent = (FROMHANDLEPERMANENT)p;
+    p = FromHandlePermanent(hWnd);
+
+    if(0 == p)
+    {
+        result += "failed to get CWnd instance\r\n";
+        return;
+    }
+
+    result += boost::str(boost::format("CWnd = 0x%p\r\n") % p);
+
+    const AFX_MSGMAP* msgmap = NULL;
+    CRuntimeClass* pr = NULL;
+    int m_nObjectSize = 0;
+
+    if (IsStaticRelease()) // 只有静态链接并且是release才是CWnd
+    {
+        CWnd* pCWnd = (CWnd*)p;
+        pr = pCWnd->GetRuntimeClass();
+        msgmap = pCWnd->GetMessageMap();
+    }
+    else
+    {
+        CWndd* pCWnd = (CWndd*)p;
+        pr = pCWnd->GetRuntimeClass();
+        msgmap = pCWnd->GetMessageMap();
+    }
+
+    result += boost::str(boost::format("HWND: 0x%p\r\nclass:%p(%s,size=%#x)\r\n") % hWnd % p % pr->m_lpszClassName % pr->m_nObjectSize);
+    BOOL bIsDialog = FALSE;
+    while(pr)
+    {
+        if(bIsDialog == FALSE && strcmp(pr->m_lpszClassName,"CDialog") == 0)
         {
-            result += "failed to find CWnd::FromHandlePermanent!\r\n";
+            bIsDialog = TRUE;
+            //if(pr->m_nObjectSize != sizeof(CDialog))
+            //{
+            //    CString aa;
+            //    aa.Format("Warning: sizeof(CDialog) is %X,expect %x,\r\n"
+            //        "dumping of member is *incorrect*!dumping of vtbl may be *incorrect*!\r\n",
+            //        pr->m_nObjectSize,sizeof(CDialog));
+            //    str += aa;
+            //}
+        }
+        //if(strcmp(pr->m_lpszClassName,"CWnd") == 0 && pr->m_nObjectSize != sizeof(CWnd))
+        //{
+        //    CString aa;
+        //    aa.Format("Warning: sizeof(CWnd) is %X,expect %x,\r\n"
+        //        "dumping of member is *incorrect*!dumping of vtbl may be *incorrect*!\r\n",
+        //        pr->m_nObjectSize,sizeof(CWnd));
+        //    str += aa;
+        //}
+        result += pr->m_lpszClassName;
+        pr = GetParentRTC(pr);
+        if(pr)
+            result += ":";
+    }
+
+    result += "\r\n\r\n";
+
+    // 获取虚函数列表
+    DWORD dwIndex;
+    PDWORD pVtbl = *((PDWORD*)p);
+
+
+#define CASE_MFC(version, debug) \
+    { \
+        if (IsStaticRelease()) \
+        { \
+            if (bIsDialog) \
+            { \
+                CDialog##version* pD = (CDialog##version*)p; \
+                pD->get_vfn_string(pVtbl, dwIndex, result); \
+            } \
+            else \
+            { \
+                CWnd##version* pCWnd = (CWnd##version*)p; \
+                pCWnd->get_vfn_string(pVtbl, dwIndex, result); \
+            } \
+        } \
+        else \
+        { \
+            if (bIsDialog) \
+            { \
+                CDialog##version##debug* pD = (CDialog##version##debug*)p; \
+                pD->get_vfn_string(pVtbl, dwIndex, result); \
+            } \
+            else \
+            { \
+                CWnd##version##debug* pCWnd = (CWnd##version##debug*)p; \
+                pCWnd->get_vfn_string(pVtbl, dwIndex, result); \
+            } \
+        } \
+    } \
+
+    switch(g_mfcver)
+    {
+    case 90:
+        CASE_MFC(90, d);
+        break;
+    case 42:
+        CASE_MFC(42, d);
+        break;
+    default:
+        CASE_MFC(00, d);
+        break;
+    }
+
+#undef CASE_MFC
+
+    //if (IsStaticRelease())
+    //{
+    //    if (g_mfcver == 90)
+    //    {
+    //        //CWndOrDialog90<CObject, bIsDialog>* wnd = (CWndOrDialog90<CObject, bIsDialog>*)p;
+    //        //wnd->get_vfn_string(pVtbl, dwIndex, result);
+    //        if (bIsDialog)
+    //        {
+    //            CDialog90* pD = (CDialog90*)p;
+    //            pD->get_vfn_string(pVtbl, dwIndex, result);
+    //        }
+    //        else
+    //        {
+    //            CWnd90* pCWnd = (CWnd90*)p;
+    //            pCWnd->get_vfn_string(pVtbl, dwIndex, result);
+    //        }
+    //    }
+    //    else
+    //    {
+    //        if (bIsDialog)
+    //        {
+    //            CDialog* pD = (CDialog*)p;
+    //            pD->get_vfn_string(pVtbl, dwIndex, result);
+    //        }
+    //        else
+    //        {
+    //            CWnd* pCWnd = (CWnd*)p;
+    //            pCWnd->get_vfn_string(pVtbl, dwIndex, result);
+    //        }
+    //    }
+    //}
+    //else
+    //{
+    //    if(bIsDialog)
+    //    {
+    //        CDialogd* pCWnd = (CDialogd*)p;
+    //        pCWnd->get_vfn_string(pVtbl, dwIndex, result);
+    //    }
+    //    else
+    //    {
+    //        CWndd* pCWnd = (CWndd*)p;
+    //        pCWnd->get_vfn_string(pVtbl, dwIndex, result);
+    //    }
+    //}
+
+    if (!msgmap)
+    {
+        result += "failed to get message map!\r\n";
+        return;
+    }
+    else
+    {
+        // 打印message map
+        result += boost::str(boost::format("\r\nmessage map=%s\r\nmsg map entries at %s\r\n")
+            % GetMods(msgmap) % GetMods(msgmap->lpEntries));
+        if(msgmap->lpEntries)
+        {
+            static UINT_PTR AfxSig_end = 0;
+            std::string s1, sTemp;
+            std::string s2;
+            const AFX_MSGMAP_ENTRY * pentries = msgmap->lpEntries;
+
+            while(pentries->nSig != AfxSig_end)
+            {
+                if(pentries->nID == pentries->nLastID || pentries->nLastID == 0)
+                    s1 = boost::str(boost::format("%04x") % pentries->nID);
+                else
+                    s1 = boost::str(boost::format("%04x to %04x") % pentries->nID % pentries->nLastID);
+                s2 = boost::str(boost::format("%04X") % pentries->nMessage);
+                for(int i=0;i<sizeof(wmmsgs)/sizeof(wmmsgs[0]); ++i)
+                {
+                    if(wmmsgs[i].msg == pentries->nMessage)
+                    {
+                        s2 = boost::str(boost::format("%s(%04x)") % wmmsgs[i].smsg % wmmsgs[i].msg);
+                    }
+                }
+
+                if(pentries->nMessage == -1 || (pentries->nMessage == WM_COMMAND && pentries->nCode==-1))
+                    sTemp = boost::str(boost::format("UpdateCmdUI: id=%s,func= %s\r\n") % s1
+                    % GetCodes( getfn(pentries) ) );
+                else if(pentries->nMessage == WM_COMMAND)
+                    sTemp = boost::str(boost::format("OnCommand: notifycode=%04x id=%s,func= %s\r\n")
+                    % pentries->nCode % s1 % GetCodes(getfn(pentries)) );
+                else if(pentries->nMessage == WM_NOTIFY)
+                    sTemp = boost::str(boost::format("OnNotify: notifycode=%04x id=%s,func= %s\r\n")
+                    % pentries->nCode % s1 % GetCodes(getfn(pentries)) );
+                else if(pentries->nMessage == 0xC000)
+                {
+                    char name[512];
+                    UINT * pMessage = (UINT*)pentries->nSig; 
+                    name[0] = 0;
+                    GetClipboardFormatNameA(*pMessage,name,sizeof(name));
+                    //GlobalGetAtomName(*pMessage,name,sizeof(name));
+                    sTemp = boost::str(boost::format("ReggedMsg:*(0x%p)=%04x(%s),func= %s\r\n") % pMessage % *pMessage % name
+                        % GetCodes(getfn(pentries)));
+                }
+                else if(pentries->nCode==0 && pentries->nLastID==0 && pentries->nID==0)
+                    sTemp = boost::str(boost::format("OnMsg:%s,func= %s\r\n") % s2 % GetCodes(getfn(pentries)));
+                else
+                    sTemp = boost::str(boost::format("msg:%s notifycode=%04x,id=%s,func= %s\r\n") % s2 % pentries->nCode
+                    %s1 % GetCodes(getfn(pentries)) );
+                result += sTemp;
+                ++ pentries;
+            }
         }
     }
+
 }
