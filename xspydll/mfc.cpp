@@ -1,3 +1,25 @@
+/* 
+ *
+ * This file is part of xspy
+ * By lynnux <lynnux@qq.com>
+ * Copyright 2013 lynnux
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ *
+ */
+
 #include "stdafx.h"
 #include <boost/format.hpp>
 #include "common.h"
@@ -291,7 +313,7 @@ bool check_static(LPVOID start_addr, size_t start_len)
     char aStr[] = "AfxFrameOrView";
     wchar_t uStr[] = L"AfxFrameOrView";
 
-    // ansiÂëËÑË÷
+    // ÏÈunicodeÂëËÑË÷
     int ret = -1;
     size_t mg_len;
     {
@@ -536,51 +558,6 @@ void SpyMfc(HWND hWnd, std::string& result)
     }
 
 #undef CASE_MFC
-
-    //if (IsStaticRelease())
-    //{
-    //    if (g_mfcver == 90)
-    //    {
-    //        //CWndOrDialog90<CObject, bIsDialog>* wnd = (CWndOrDialog90<CObject, bIsDialog>*)p;
-    //        //wnd->get_vfn_string(pVtbl, dwIndex, result);
-    //        if (bIsDialog)
-    //        {
-    //            CDialog90* pD = (CDialog90*)p;
-    //            pD->get_vfn_string(pVtbl, dwIndex, result);
-    //        }
-    //        else
-    //        {
-    //            CWnd90* pCWnd = (CWnd90*)p;
-    //            pCWnd->get_vfn_string(pVtbl, dwIndex, result);
-    //        }
-    //    }
-    //    else
-    //    {
-    //        if (bIsDialog)
-    //        {
-    //            CDialog* pD = (CDialog*)p;
-    //            pD->get_vfn_string(pVtbl, dwIndex, result);
-    //        }
-    //        else
-    //        {
-    //            CWnd* pCWnd = (CWnd*)p;
-    //            pCWnd->get_vfn_string(pVtbl, dwIndex, result);
-    //        }
-    //    }
-    //}
-    //else
-    //{
-    //    if(bIsDialog)
-    //    {
-    //        CDialogd* pCWnd = (CDialogd*)p;
-    //        pCWnd->get_vfn_string(pVtbl, dwIndex, result);
-    //    }
-    //    else
-    //    {
-    //        CWndd* pCWnd = (CWndd*)p;
-    //        pCWnd->get_vfn_string(pVtbl, dwIndex, result);
-    //    }
-    //}
 
     if (!msgmap)
     {
